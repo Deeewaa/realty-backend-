@@ -19,15 +19,9 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
-// Registration endpoint
+// 👇 Registration endpoint MUST come BEFORE app.listen()
 app.post("/api/auth/register", (req, res) => {
   try {
-    // Example registration logic (replace with real code)
     const { email, password } = req.body;
     res.json({
       success: true,
@@ -37,4 +31,10 @@ app.post("/api/auth/register", (req, res) => {
   } catch (error) {
     res.status(500).json({ error: "Registration failed" });
   }
+});
+
+// Start server (LAST IN THE FILE)
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
