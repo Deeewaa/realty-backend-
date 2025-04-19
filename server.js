@@ -41,6 +41,12 @@ app.post("/api/auth/register", async (req, res) => {
       return res.status(400).json({ error: "Email and password required" });
     }
 
+    // Check for existing user
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already exists" });
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -49,13 +55,34 @@ app.post("/api/auth/register", async (req, res) => {
     await newUser.save();
 
     // Generate JWT token
-    const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET);
+    const token = jwt.sign(
+      { userId: newUser._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' } // Add token expiration
+    );
 
     res.json({
       success: true,
       message: "User registered!",
-      token // Send token to client
+      token
     });
+
+  } catch (error) {
+    console.error("Registration Error:", error);
+    
+    // Handle duplicate email error
+    if (error.code === 11000) {
+      return res.status(400).json({ error: "Email already exists" });
+    }
+    
+    // Handle JWT errors
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(500).json({ error: "Token generation failed" });
+    }
+
+    res.status(500).json({ error: "Registration failed" });
+  }
+});
   } catch (error) {
     if (error.code === 11000) { // MongoDB duplicate key error
       res.status(400).json({ error: "Email already exists" });
