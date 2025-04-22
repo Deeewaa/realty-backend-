@@ -4,6 +4,7 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import nodemailer from 'nodemailer';
 
 const app = express();
 
@@ -62,6 +63,50 @@ const Property = mongoose.model('Property', propertySchema);
 app.use(cors({ origin: 'https://realtyestate.kesug.com' }));
 app.use(express.json());
 
+// Configure email transporter
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD
+  }
+});
+
+// Forgot password endpoint
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Generate reset token (expires in 15 minutes)
+    const resetToken = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    // Send email
+    const resetLink = `https://realtyestate.kesug.com/reset-password?token=${resetToken}`;
+    
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Password Reset',
+      html: `Click <a href="${resetLink}">here</a> to reset your password.`
+    });
+
+    res.json({ success: true, message: "Reset email sent" });
+
+  } catch (error) {
+    console.error("Forgot Password Error:", error);
+    res.status(500).json({ error: "Failed to send reset email" });
+  }
+});
 // ========================
 // 4. ROUTES (UPDATED)
 // ========================
@@ -122,6 +167,36 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     console.log("Login attempt for:", email);
+    
+    // 👇 ADD PASSWORD RESET ROUTES HERE
+    // ========================
+    // Password Reset Routes
+    // ========================
+    app.post('/api/auth/reset-password', async (req, res) => {
+      try {
+        const { token, newPassword } = req.body;
+    
+        // Verify token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.userId);
+        if (!user) return res.status(400).json({ error: "Invalid token" });
+    
+        // Update password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
+        await user.save();
+    
+        res.json({ success: true, message: "Password updated" });
+    
+      } catch (error) {
+        console.error("Reset Password Error:", error);
+        if (error.name === 'TokenExpiredError') {
+          res.status(401).json({ error: "Reset link expired" });
+        } else {
+          res.status(500).json({ error: "Password reset failed" });
+        }
+      }
+    });
     // Validate input
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password required" });
