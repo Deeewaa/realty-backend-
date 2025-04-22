@@ -129,24 +129,27 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Find user
     const user = await User.findOne({ email });
+    console.log("User found:", user); // 👈 Debugging log
+
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
-
     // Verify password
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log("Password match result:", isMatch); // 👈 Debugging log
+
     if (!isMatch) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
     // Generate JWT token
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+    console.log("Token generated successfully"); // 👈 Debugging log
 
-    res.json({
-      success: true,
-      token // Send token to client
-    });
+    res.json({ success: true, token });
+
   } catch (error) {
+    console.error("Login Error Details:", error); // 👈 Detailed error logging
     res.status(500).json({ error: "Login failed" });
   }
 });
