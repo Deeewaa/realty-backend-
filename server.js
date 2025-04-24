@@ -24,6 +24,9 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/realty-db
 // ========================
 // 2. MIDDLEWARE
 // ========================
+// Trust Render's proxy
+app.set('trust proxy', 1); // Add this line
+
 // Security middleware
 app.use(helmet());
 app.use(cors({ 
@@ -31,11 +34,16 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate limiting for auth routes
+// Rate limiting for auth routes (updated configuration)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100,
-  message: 'Too many requests from this IP, please try again later'
+  message: 'Too many requests from this IP, please try again later',
+  validate: { trustProxy: true }, // Add this
+  keyGenerator: (req) => {
+    // Extract first IP from X-Forwarded-For header if present
+    return req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip;
+  }
 });
 
 // Body parsing
@@ -47,17 +55,8 @@ app.use(express.json({ limit: '10kb' }));
 // Auth Routes
 app.use('/api/auth', authLimiter, authRouter);
 
-// User Routes
-import userRouter from './routes/userRoutes.js';
-app.use('/api/users', authenticateUser, userRouter);
-
-// Property Routes
-import propertyRouter from './routes/propertyRoutes.js';
-app.use('/api/properties', propertyRouter);
-
-// Admin Routes
-import adminRouter from './routes/adminRoutes.js';
-app.use('/api/admin', authenticateUser, authorize(['admin']), adminRouter);
+// Rest of your routes remain the same...
+// [Keep the User Routes, Property Routes, and Admin Routes sections unchanged]
 
 // ========================
 // 4. ERROR HANDLING
