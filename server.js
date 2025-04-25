@@ -31,6 +31,17 @@ app.use(cors({
   credentials: true
 }));
 
+// Add CORS_ORIGIN as a separate configuration if needed
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN 
+    ? process.env.CORS_ORIGIN.split(',') 
+    : process.env.CLIENT_URL,
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
+
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
