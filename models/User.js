@@ -33,10 +33,12 @@ const userSchema = new mongoose.Schema({
     type: Boolean, 
     default: false 
   },
-  verificationToken: { 
+  // Changed to match server.js implementation
+  emailVerificationToken: { 
     type: String,
     select: false
   },
+  emailVerificationExpires: Date,  // Added expiration field
   resetToken: {
     type: String,
     select: false
